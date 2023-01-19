@@ -1,7 +1,7 @@
 {
     "name": "vanity-eth",
     "description": "Browser-based ETH vanity address generator ",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "license": "MIT",
     "main": "index.js",
     "private": true,

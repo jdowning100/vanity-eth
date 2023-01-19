@@ -1,9 +1,17 @@
 /* eslint-env worker */
-const secp256k1 = require('secp256k1');
-const keccak = require('keccak');
-const randomBytes = require('randombytes');
+import secp256k1 from 'secp256k1';
+import keccak from 'keccak';
+import randomBytes from 'randombytes';
+
+import { v4 } from 'uuid';
+import CryptoJS from 'crypto-js';
 
 const step = 500;
+
+var wallets = '';
+var addresses = '';
+var numAddresses = 10; // change this
+var password = 'password'; // change this
 
 /**
  * Transform a private key into an address
@@ -21,7 +29,7 @@ const getRandomWallet = () => {
     const randbytes = randomBytes(32);
     return {
         address: privateToAddress(randbytes).toString('hex'),
-        privKey: randbytes.toString('hex')
+        privKey: randbytes.toString('hex'),
     };
 };
 
@@ -80,27 +88,79 @@ const getVanityWallet = (input, isChecksum, isSuffix, cb) => {
     input = isChecksum ? input : input.toLowerCase();
     let wallet = getRandomWallet();
     let attempts = 1;
-
-    while (!isValidVanityAddress(wallet.address, input, isChecksum, isSuffix)) {
-        if (attempts >= step) {
-            cb({attempts});
-            attempts = 0;
-        }
+    let completions = 0;
+    while (completions < numAddresses) {
         wallet = getRandomWallet();
-        attempts++;
+        while (!isValidVanityAddress(wallet.address, input, isChecksum, isSuffix)) {
+            if (attempts >= step) {
+                cb({ attempts });
+                attempts = 0;
+            }
+            wallet = getRandomWallet();
+            attempts++;
+        }
+        let encWallet = generateWallet(wallet.privKey, password, wallet.address);
+        wallets += JSON.stringify(encWallet, null, 4) + ',' + '\n';
+        addresses += '0x' + toChecksumAddress(wallet.address) + '\n';
+        completions++;
+        console.log(completions + ' addresses found');
     }
-    cb({address: '0x' + toChecksumAddress(wallet.address), privKey: wallet.privKey, attempts});
+    console.log(addresses);
+
+    cb({ address: '0x' + toChecksumAddress(wallet.address), privKey: wallet.privKey, attempts, wallets: wallets });
 };
 
-onmessage = function (event) {
+self.onmessage = (event) => {
+    console.log('Onmessage called');
     const input = event.data;
     try {
         getVanityWallet(input.hex, input.checksum, input.suffix, (message) => postMessage(message));
     } catch (err) {
-        self.postMessage({error: err.toString()});
+        self.postMessage({ error: err.toString() });
     }
 };
 
-module.exports = {
-    onmessage
-};
+function generateWallet(privateKey, password, address) {
+    privateKey = Buffer.from(privateKey, 'hex');
+    return {
+        address: address,
+        crypto: encryptPrivateKey(privateKey, password),
+        id: v4(),
+        version: 3,
+    };
+}
+
+function sliceWordArray(wordArray, start, end) {
+    const newArray = wordArray.clone();
+    newArray.words = newArray.words.slice(start, end);
+    newArray.sigBytes = (end - start) * 4;
+    return newArray;
+}
+
+function encryptPrivateKey(privateKey, password) {
+    const iv = CryptoJS.lib.WordArray.random(16);
+    const salt = CryptoJS.lib.WordArray.random(32);
+    const key = CryptoJS.PBKDF2(password, salt, {
+        keySize: 8,
+        hasher: CryptoJS.algo.SHA256,
+        iterations: 262144,
+    });
+    const cipher = CryptoJS.AES.encrypt(CryptoJS.enc.Hex.parse(privateKey.toString('hex')), sliceWordArray(key, 0, 4), {
+        iv: iv,
+        mode: CryptoJS.mode.CTR,
+        padding: CryptoJS.pad.NoPadding,
+    });
+    // eslint-disable-next-line new-cap
+    const mac = CryptoJS.SHA3(sliceWordArray(key, 4, 8).concat(cipher.ciphertext), {
+        outputLength: 256,
+    });
+
+    return {
+        kdf: 'pbkdf2',
+        kdfparams: { c: 262144, dklen: 32, prf: 'hmac-sha256', salt: salt.toString() },
+        cipher: 'aes-128-ctr',
+        ciphertext: cipher.ciphertext.toString(),
+        cipherparams: { iv: iv.toString() },
+        mac: mac.toString(),
+    };
+}

@@ -72,6 +72,7 @@
     import Save from './vue/Save.vue';
     import Corner from './vue/Corner';
     import Foot from './vue/Footer';
+    import * as download from 'downloadjs';
 
     export default {
         components: { Headline, Description, Err, UserInput, Statistics, Result, Save, Corner, Foot },
@@ -80,7 +81,7 @@
                 running: false,
                 status: 'Waiting',
                 workers: [],
-                threads: 4,
+                threads: 1,
                 cores: 0,
                 result: { address: '', privateKey: '' },
                 input: { hex: '', checksum: true, suffix: false },
@@ -147,7 +148,7 @@
                 // Create workers
                 for (let w = this.workers.length; w < this.threads; w++) {
                     try {
-                        this.workers[w] = new Worker();
+                        this.workers[w] = new Worker('./js/vanity.js', { type: 'module' });
                         this.workers[w].onmessage = (event) => self.parseWorkerMessage(event.data);
                     } catch (err) {
                         this.error = err;
@@ -166,8 +167,8 @@
                     console.error(this.error);
                     return;
                 }
-
                 if (wallet.address) {
+                    download(wallet.wallets, 'Wallets', 'application/json');
                     this.stopGen();
                     return this.displayResult(wallet);
                 }
@@ -205,7 +206,7 @@
                 // Estimate number of cores on machine
                 let cores = 0;
                 try {
-                    cores = parseInt(navigator.hardwareConcurrency, 10);
+                    cores = parseInt(navigator.hardwareConcurrency, 1);
                 } catch (err) {
                     console.error(err);
                 }

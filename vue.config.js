@@ -15,6 +15,8 @@ module.exports = {
                 filename: 'vanity.js',
             })
             .end();
+        config.module.rule('vue').uses.delete('cache-loader');
+        config.module.rule('js').uses.delete('cache-loader');
     },
     configureWebpack: {
         plugins: process.env.DEPLOY

@@ -104,7 +104,7 @@
         },
         data: function () {
             return {
-                threads: this.$props.cores || 4,
+                threads: this.$props.cores || 1,
                 hex: '',
                 checksum: true,
                 suffix: false,

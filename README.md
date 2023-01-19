@@ -7,6 +7,8 @@
 
 Browser-based ETH vanity address generator
 
+I forked it and added the ability to generate n number of vanity addresses
+
 Just type [`vanity-eth.tk`](https://vanity-eth.tk) to use it ⚡️
 
 [![Vanity-ETH](https://i.imgur.com/zmSLeBP.png)](https://vanity-eth.tk)
@@ -19,14 +21,33 @@ Examples: `0xc0ffee254729296a45a3885639AC7E10F9d54979`, or `0x999999cf1046e68e36
 
 ## Usage
 
-First of all, visit [`vanity-eth.tk`](https://vanity-eth.tk)
+In src/js/vanity.js:
 
-Enter as short prefix/suffix of your choice at the bottom of the page, and click ‘generate’ to start. Your browser will
+Change numAddresses on line 13 to the number of addresses you want to generate.
+
+Change password on line 14 to the password you'd like to use to encrypt your private keys.
+
+In the terminal (navigate to project directory):
+
+```sh
+npm install
+npm run serve
+```
+
+If that doesn't work you can try:
+
+```sh
+export NODE_OPTIONS=--openssl-legacy-provider npm run serve
+```
+
+Then navigate to http://localhost:8080
+
+Enter a short prefix/suffix of your choice at the bottom of the page, and click ‘generate’ to start. Your browser will
 generate lots of random addresses until one matches your input.
 
-Once an address is found, you can reveal the private key, or click the 'save' button to download a password-encrypted keystore file.
+Once the required number of addresses has been found, your browser will ask you to download a keystore file of encrypted private keys.
 
-You can increase the number of working threads to reach higher speeds, or decrease it if your computer struggles.
+This has only been tested on one thread. You can try to increase the number of threads but that will lead to unpredictable behavior.
 
 ## Security
 
